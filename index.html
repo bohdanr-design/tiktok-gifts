@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TikTok Gifts Game</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #121212;
+        }
+        /* Custom style for the falling gifts container */
+        #game-area {
+            height: 75vh; /* Адаптивна висота ігрової зони */
+            position: relative;
+            overflow: hidden;
+            background: linear-gradient(180deg, #1f1f1f 0%, #0a0a0a 100%);
+            border-radius: 0.75rem;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            margin-top: 1rem;
+        }
+        /* Style for individual gifts */
+        .gift {
+            position: absolute;
+            width: 60px; /* Збільшений розмір для кращої видимості зображення */
+            height: 60px; /* Збільшений розмір для кращої видимості зображення */
+            cursor: pointer;
+            z-index: 100;
+            user-select: none;
+            transition: opacity 0.2s ease, transform 0.2s ease;
+            display: flex; /* Додано для центрування зображення/емодзі */
+            justify-content: center;
+            align-items: center;
+            font-size: 40px; /* Розмір емодзі-заглушки */
+        }
+        /* Стилі для вставлених зображень подарунків */
+        .gift img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            /* Базове світіння для подарунків */
+            filter: drop-shadow(0 0 5px rgba(255, 77, 79, 0.5));
+            animation: pulse-shadow 1.5s infinite;
+        }
+
+        @keyframes pulse-shadow {
+            0% { filter: drop-shadow(0 0 5px rgba(255, 77, 79, 0.5)); }
+            50% { filter: drop_shadow(0 0 10px #ff4d4f); }
+            100% { filter: drop_shadow(0 0 5px rgba(255, 77, 79, 0.5)); }
+        }
+        /* Hide scrollbar on mobile */
+        body { -ms-overflow-style: none; scrollbar-width: none; }
+        body::-webkit-scrollbar { display: none; }
+        
+        /* Utility class to hide element */
+        .hidden { display: none !important; }
+
+        /* Custom style for the final popup background */
+        #overlay {
+            background-color: rgba(0, 0, 0, 0.85);
+        }
+
+        /* --- Custom Score Box Styling --- */
+        #score-box {
+            position: relative; /* Для позиціонування лічильника */
+            width: 50px; /* Ширина іконки подарунка */
+            height: 50px; /* Висота іконки подарунка */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 0;
+            background-color: transparent;
+            border: none;
+            box-shadow: none;
+        }
+
+        #score-box svg {
+            width: 100%;
+            height: 100%;
+            /* Використовуємо фіолетовий/лавандовий колір для коробки, схожий на зображення */
+            color: #9333ea; 
+            filter: drop-shadow(0 0 5px rgba(147, 51, 234, 0.5)); /* Ефект світіння */
+        }
+
+        #score-box #score {
+            position: absolute;
+            top: -5px; /* Підняти лічильник над коробкою */
+            right: -5px; /* Зсунути вправо */
+            background-color: #ff4d4f; /* Червоний колір */
+            color: white;
+            font-size: 0.9rem; /* Зменшити розмір шрифту */
+            font-weight: bold;
+            border-radius: 50%; /* Кругла форма */
+            padding: 0.2em 0.5em; /* Відступи для розміру бульбашки */
+            min-width: 1.5em; /* Мінімальна ширина для однозначних чисел */
+            text-align: center;
+            line-height: 1; /* Вирівнювання тексту по центру */
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3); /* Тінь для ефекту об'єму */
+        }
+        /* Адаптуємо розмір заголовка для мобільних пристроїв */
+        @media (max-width: 640px) {
+            #game-title {
+                font-size: 2rem;
+            }
+        }
+    </style>
+</head>
+<body class="p-4 flex flex-col items-center min-h-screen">
+
+    <!-- Main Game Container --><div class="w-full max-w-xl">
+
+        <!-- Score Box (Top Right) --><div class="flex justify-between items-center mb-4">
+            <h1 id="game-title" class="text-3xl sm:text-4xl font-black text-white text-center flex-grow uppercase tracking-wider">
+                catch all the gifts
+            </h1>
+            <div id="score-box" class="transform hover:scale-105 transition duration-300 z-50">
+                <!-- SVG Icon for the gift box (similar to the image) --><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-gift">
+                    <rect x="3" y="8" width="18" height="4" rx="1"/>
+                    <path d="M12 8v13"/>
+                    <path d="M19 12v9"/>
+                    <path d="M5 12v9"/>
+                    <path d="M10 8c0-1.7 1.3-3 3-3s3 1.3 3 3"/>
+                    <path d="M5 8c0-1.7 1.3-3 3-3s3 1.3 3 3"/>
+                </svg>
+                <span id="score">0</span>
+            </div>
+        </div>
+
+        <!-- Game Area --><div id="game-area">
+            <!-- Falling gifts will be injected here by JS --></div>
+    </div>
+
+    <!-- Overlay for Form and Popup --><div id="overlay" class="fixed inset-0 flex items-center justify-center hidden">
+        
+        <!-- Submission Form --><div id="submission-form" class="bg-gray-900 p-8 rounded-xl shadow-2xl text-center w-11/12 max-w-sm border-4 border-pink-600">
+            <p class="text-2xl font-bold text-white mb-6 uppercase tracking-wider">Enter Your Username</p>
+            <input type="text" id="username-input" placeholder="@username" class="w-full p-3 mb-6 border-2 border-gray-700 bg-gray-800 text-white rounded-lg focus:ring-pink-500 focus:border-pink-500 transition duration-300 text-center text-lg">
+            <button id="claim-button" class="w-full bg-pink-600 hover:bg-pink-700 text-white font-bold py-3 px-4 rounded-full transition duration-300 shadow-xl uppercase">
+                Claim
+            </button>
+        </div>
+
+        <!-- Congratulations Popup (Initially Hidden) --><div id="congratulations-popup" class="bg-green-600 p-10 rounded-xl shadow-2xl text-center max-w-xs transform scale-110 hidden">
+            <svg xmlns="http://www.w3.org/2000/svg" width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mx-auto mb-4 lucide lucide-check-circle">
+                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="m9 11 3 3L22 4"/></svg>
+            <h2 class="text-3xl font-extrabold text-white mb-2">Congratulations!</h2>
+            <p class="text-xl text-white mt-2">Check your TikTok account</p>
+        </div>
+    </div>
+
+    <script>
+        // Масив HTML з тегами <img>, які посилаються на зовнішні ресурси. 
+        // Додано onerror, щоб забезпечити резервну заглушку (емодзі) на випадок, якщо зображення не завантажаться.
+        const GIFT_HTML = [
+            // 1. Gift Box
+            `<img src="https://p16-webcast.tiktokcdn.com/img/maliva/webcast-va/9a586391fbb1e21621c4203e5563a9e0~tplv-obj.webp" onerror="this.outerHTML='🎁'" alt="Gift 1" class="gift-image">`,
+            // 2. Rose
+            `<img src="https://p16-webcast.tiktokcdn.com/img/alisg/webcast-sg/resource/11184a62a81905d6cfc8ae77d3fe0e80.png~tplv-obj.webp" onerror="this.outerHTML='🌹'" alt="Gift 2" class="gift-image">`,
+            // 3. J (TikTok Music/Logo - використовуємо J-подібний логотип)
+            `<img src="https://p16-webcast.tiktokcdn.com/img/alisg/webcast-sg/resource/3790b60a52697daa138bf8d0ec27242f.png~tplv-obj.webp" onerror="this.outerHTML='🎶'" alt="Gift 3" class="gift-image">`,
+            // 4. Weights (Гиря)
+            `<img src="https://p16-webcast.tiktokcdn.com/img/maliva/webcast-va/8f471afbcebfda3841a6cc515e381f58~tplv-obj.webp" onerror="this.outerHTML='🏋️'" alt="Gift 4" class="gift-image">`,
+            // 5. Ice Cream Cone (Морозиво)
+            `<img src="https://p16-webcast.tiktokcdn.com/img/alisg/webcast-sg/resource/aca72c59f99d08b0c0d1cd6cc79dbb16.png~tplv-obj.webp" onerror="this.outerHTML='🍦'" alt="Gift 5" class="gift-image">`,
+            // 6. Finger Heart (Серце пальцями)
+            `<img src="https://p16-webcast.tiktokcdn.com/img/alisg/webcast-sg/resource/de31974d7a94525c6f31872b5b38f76e.png~tplv-obj.webp" onerror="this.outerHTML='🫰'" alt="Gift 6" class="gift-image">`,
+            // 7. Panda (Панда - використовуємо попередній SVG для імітації)
+            `<img src="https://p16-webcast.tiktokcdn.com/img/maliva/webcast-va/resource/bfb8425a7e8fa03f9fec05a973a4a506.png~tplv-obj.webp" onerror="this.outerHTML='🐼'" alt="Gift 7" class="gift-image">`,
+        ];
+
+        
+        // --- Game Setup ---
+        const gameArea = document.getElementById('game-area');
+        const scoreSpan = document.getElementById('score');
+        const gameTitle = document.getElementById('game-title');
+        const overlay = document.getElementById('overlay');
+        const submissionForm = document.getElementById('submission-form');
+        const usernameInput = document.getElementById('username-input');
+        const claimButton = document.getElementById('claim-button');
+        const congratulationsPopup = document.getElementById('congratulations-popup');
+        
+        // Видалено loadingSpinner та geminiMessage
+        
+        const TOTAL_GIFTS = 7;
+        let caughtGifts = 0;
+        let activeGifts = [];
+        let giftIdCounter = 0;
+        let lastFrameTime = 0;
+
+        // --- Core Functions (Gemini logic removed) ---
+
+        function createGift() {
+            if (giftIdCounter >= TOTAL_GIFTS) return;
+
+            const gift = document.createElement('div');
+            // Використовуємо HTML з тегом <img> з масиву
+            gift.innerHTML = GIFT_HTML[giftIdCounter % GIFT_HTML.length];
+            gift.classList.add('gift');
+            gift.id = `gift-${giftIdCounter}`;
+            gift.setAttribute('data-id', giftIdCounter);
+            
+            // Random horizontal position (50px width offset)
+            const randomX = Math.random() * (gameArea.clientWidth - 60); // 60px width
+            gift.style.left = `${randomX}px`;
+            gift.style.top = `-60px`; // Start above the top edge
+            
+            // New slower speed (max 0.06 px/ms)
+            const speed = (Math.random() * 0.02) + 0.04;
+            
+            const giftObject = {
+                element: gift,
+                id: giftIdCounter,
+                y: -60,
+                speed: speed,
+                isCaught: false
+            };
+
+            activeGifts.push(giftObject);
+            gameArea.appendChild(gift);
+            giftIdCounter++;
+
+            // Click handler to catch the gift
+            gift.addEventListener('click', () => {
+                if (!giftObject.isCaught) {
+                    giftObject.isCaught = true;
+                    caughtGifts++;
+                    scoreSpan.textContent = caughtGifts;
+                    
+                    // Visual feedback and removal
+                    gift.style.transform = 'scale(0.1) rotate(360deg)';
+                    gift.style.opacity = '0';
+                    gift.style.filter = 'none';
+
+                    // Check for game end
+                    if (caughtGifts === TOTAL_GIFTS) {
+                        setTimeout(endGame, 500);
+                    }
+                }
+            });
+        }
+
+        // Animation Loop
+        function animate(currentTime) {
+            if (!lastFrameTime) lastFrameTime = currentTime;
+            const deltaTime = currentTime - lastFrameTime;
+
+            activeGifts = activeGifts.filter(giftObj => {
+                if (giftObj.isCaught) {
+                    // Remove caught gifts from the DOM after animation completes
+                    if (giftObj.element) {
+                        giftObj.element.remove();
+                    }
+                    return false;
+                }
+
+                // Update Y position based on speed and delta time
+                giftObj.y += giftObj.speed * deltaTime;
+                giftObj.element.style.top = `${giftObj.y}px`;
+
+                // If gift falls off screen
+                if (giftObj.y > gameArea.clientHeight) {
+                    // Do not increment score, simply remove it (as per requirement, no miss logic)
+                    if (giftObj.element) {
+                        giftObj.element.remove();
+                    }
+                    return false;
+                }
+                return true;
+            });
+            
+            lastFrameTime = currentTime;
+
+            if (caughtGifts < TOTAL_GIFTS || activeGifts.length > 0) {
+                requestAnimationFrame(animate);
+            }
+        }
+        
+        // Spawn gifts sequentially (2000ms interval for small distance)
+        function startSpawning() {
+            let spawnCount = 0;
+            const spawnIntervalId = setInterval(() => {
+                if (spawnCount < TOTAL_GIFTS) {
+                    createGift();
+                    spawnCount++;
+                } else {
+                    clearInterval(spawnIntervalId);
+                    // Start the main game loop only after spawning begins
+                    requestAnimationFrame(animate);
+                }
+            }, 2000); // Increased interval for slower spacing
+        }
+
+        // Game Over Handler
+        function endGame() {
+            gameTitle.textContent = "CONGRATULATIONS!";
+            gameArea.innerHTML = '<p class="text-white text-3xl font-bold pt-4">All 7 gifts caught!</p>';
+            overlay.classList.remove('hidden');
+            submissionForm.classList.remove('hidden');
+        }
+
+        // --- Form Handler (Simplified without async/await) ---
+
+        claimButton.addEventListener('click', () => {
+            const username = usernameInput.value.trim();
+            if (username) {
+                
+                // 1. Hide form
+                submissionForm.classList.add('hidden');
+
+                // 2. Show popup
+                congratulationsPopup.classList.remove('hidden');
+
+                console.log(`Username claimed: ${username}`);
+                
+            } else {
+                // Use custom message instead of alert
+                usernameInput.style.borderColor = '#ff4d4f';
+                usernameInput.placeholder = "Username required!";
+                setTimeout(() => {
+                    usernameInput.style.borderColor = '#374151';
+                    usernameInput.placeholder = "@username";
+                }, 1500);
+            }
+        });
+
+        // Start the game
+        startSpawning();
+    </script>
+</body>
+</html>
